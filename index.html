@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting DApp</title>
+</head>
+<body>
+    <h1>Voting DApp</h1>
+
+    <div id="candidate-list">
+        <h2>Candidates:</h2>
+        <!-- Candidate list will appear here -->
+    </div>
+
+    <div id="vote-section">
+        <h2>Vote for a Candidate</h2>
+        <input type="number" id="candidateId" placeholder="Enter candidate ID">
+        <button onclick="voteForCandidate()">Vote</button>
+    </div>
+
+    <div id="results">
+        <h2>Results:</h2>
+        <button onclick="getResults()">Get Results</button>
+        <p id="winning-candidate"></p>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.min.js"></script>
+    <script>
+        // Your deployed contract address
+        const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
+
+        // Replace with your Infura Project ID or a provider URL for your testnet
+        const provider = new ethers.JsonRpcProvider("https://goerli.infura.io/v3/YOUR_INFURA_PROJECT_ID");
+
+        // Your contract's ABI
+        const abi = [
+            // Add your contract ABI here
+            {
+                "inputs": [],
+                "name": "listCandidates",
+                "outputs": [
+                    {
+                        "components": [
+                            { "internalType": "uint256", "name": "id", "type": "uint256" },
+                            { "internalType": "string", "name": "name", "type": "string" },
+                            { "internalType": "uint256", "name": "voteCount", "type": "uint256" }
+                        ],
+                        "internalType": "struct Voting.Candidate[]",
+                        "name": "",
+                        "type": "tuple[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    { "internalType": "uint256", "name": "candidateId", "type": "uint256" }
+                ],
+                "name": "vote",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getResults",
+                "outputs": [
+                    { "internalType": "string", "name": "", "type": "string" },
+                    { "internalType": "uint256", "name": "", "type": "uint256" }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Create a contract instance
+        const contract = new ethers.Contract(contractAddress, abi, provider);
+
+        // Function to fetch and list candidates
+        async function listCandidates() {
+            const candidates = await contract.listCandidates();
+            const candidateListDiv = document.getElementById("candidate-list");
+            candidateListDiv.innerHTML += "<ul>";
+            candidates.forEach(candidate => {
+                candidateListDiv.innerHTML += `<li>${candidate.name} (ID: ${candidate.id}) - Votes: ${candidate.voteCount}</li>`;
+            });
+            candidateListDiv.innerHTML += "</ul>";
+        }
+
+        // Function to vote for a candidate
+        async function voteForCandidate() {
+            const candidateId = document.getElementById("candidateId").value;
+
+            // Set up the signer (you need to connect MetaMask or any Ethereum wallet)
+            const signer = await provider.getSigner();
+
+            const contractWithSigner = contract.connect(signer);
+
+            try {
+                const tx = await contractWithSigner.vote(candidateId);
+                await tx.wait(); // Wait for the transaction to be mined
+                alert("Voted successfully!");
+            } catch (err) {
+                console.error(err);
+                alert("Error voting. Please check if you've already voted.");
+            }
+        }
+
+        // Function to get and display the voting results
+        async function getResults() {
+            const [winnerName, winnerVotes] = await contract.getResults();
+            document.getElementById("winning-candidate").innerText = `Winner: ${winnerName} with ${winnerVotes} votes`;
+        }
+
+        // Call listCandidates when the page loads
+        window.onload = function() {
+            listCandidates();
+        };
+    </script>
+</body>
+</html>
